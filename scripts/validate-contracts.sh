@@ -47,6 +47,7 @@ desclen=$(awk '/^---$/{n++; next} n==1 && /^description:/{d=1; next} n==1 && d &
 #    (validate-contracts.sh itself is repo tooling, exempt from pipeline docs)
 # ---------------------------------------------------------------------------
 for f in scripts/*; do
+  [ -f "$f" ] || continue            # skip dirs (e.g. a stray __pycache__)
   base=$(basename "$f")
   [ "$base" = "validate-contracts.sh" ] && continue
   grep -q "$base" SKILL.md  || err "scripts/$base exists but SKILL.md never mentions it"
@@ -151,27 +152,29 @@ elif len(skill_set) != n_samples:
 if skill_set and bp_set and skill_set != bp_set:
     errors.append(f"sample-archetype claims differ: SKILL.md {sorted(skill_set)} vs SLIDE_BLUEPRINTS {sorted(bp_set)}")
 
-# ---- 11. functional: author-date reference list (B2) ----
-# whitespace-normalize: the claim is line-wrapped in the docstring
-mr_src = ' '.join(open('scripts/map_references.py').read().split())
-if 'author-date reference list' in mr_src:
-    apa = ("# Module X\n\nProse cites (Park & Choo, 2024) and a scrambled one (Nash, 2023).\n\n"
-           "## References\n\n"
-           "Park, J., & Choo, S. (2024). Scholarly prompting. Journal of AI, 12(3), 1-20.\n\n"
-           "Sun, T., & Zhao, M. (2025). Structural prompts. AI Review, 8(1), 44-61.\n")
-    with tempfile.TemporaryDirectory() as td:
-        p = os.path.join(td, 'apa.md')
-        open(p, 'w').write(apa)
-        out = subprocess.run([sys.executable, 'scripts/map_references.py', '--source', p],
-                             capture_output=True, text=True)
-        try:
-            entries = json.loads(out.stdout)['entries']
-        except Exception:
-            entries = {}
-        if not entries:
-            errors.append("map_references.py claims author-date reference-list support "
-                          "but parses 0 entries from an APA-style list — scrambled-bib "
-                          "check silently disabled (B2)")
+# ---- 11. functional: bibliography-format contract (B2, Decision 3: IEEE-only) ----
+# On an author-date (APA-style) reference list, map_references must either parse
+# entries (if support is ever added) or WARN LOUDLY that the scrambled-bib
+# cross-check was skipped. Silent 0-entry output is the failure mode.
+apa = ("# Module X\n\nProse cites (Park & Choo, 2024) and a scrambled one (Nash, 2023).\n\n"
+       "## References\n\n"
+       "Park, J., & Choo, S. (2024). Scholarly prompting. Journal of AI, 12(3), 1-20.\n\n"
+       "Sun, T., & Zhao, M. (2025). Structural prompts. AI Review, 8(1), 44-61.\n")
+with tempfile.TemporaryDirectory() as td:
+    p = os.path.join(td, 'apa.md')
+    open(p, 'w').write(apa)
+    out = subprocess.run([sys.executable, 'scripts/map_references.py', '--source', p],
+                         capture_output=True, text=True)
+    try:
+        data = json.loads(out.stdout)
+    except Exception:
+        data = {}
+    if not data.get('entries'):
+        warns = ' '.join(data.get('warnings', []))
+        if not re.search(r'not parsed|skipped|not numbered', warns, re.I):
+            errors.append("map_references.py: author-date reference list yields 0 entries "
+                          "with no loud skip warning — scrambled-bib check silently "
+                          "disabled (B2)")
 
 # ---- 12. functional: CITATION regex acronym guard (D1) ----
 pat = None

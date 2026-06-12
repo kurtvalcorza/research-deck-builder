@@ -5,16 +5,27 @@ Structural checks (always): slide count, speaker notes present on every slide (a
 the word band), inline citations present, and NO leftover icon-font glyphs (the exact
 failure mode the visual rebuild exists to fix).
 
-Fidelity checks (with --source <module.md>): the gate the method's headline promise
-("faithful citations") previously lacked. Verifies against the source text that
-  * every surname cited on a slide actually appears in the source, and
+Outline checks (with --outline <mNN_outline.json>): enforce the Phase 0 content plan --
+slide count matches the outline, every outline title appears on its slide, and every
+outline citation string appears on its slide. These are HARD failures: the outline is
+the source of truth for a (re)build, and this is what makes that claim enforceable.
+
+Fidelity checks (with --source <module.md>): PRESENCE checks against the source text --
+  * every surname in every citation on a slide appears in the source,
+  * each citation's year appears in the source, and
   * every stat-like number on a slide (85%, 18,000, 147.5 ...) appears in the source --
-so a wrong attribution or a transposed digit no longer passes QA silently.
+so a wrong attribution or a transposed digit no longer passes QA silently. NOTE the
+limit: presence checking cannot tell a right-surname-wrong-claim attribution; that
+pairing stays a human read. Numbered cites ([1]) are resolved to surnames via
+--refmap <mNN_refmap.json> (from map_references.py); without a refmap they count for
+citation presence but cannot be fidelity-checked.
 
 Exit code is non-zero when a HARD invariant fails, so it can gate a build:
-  HARD  : missing/empty notes (when required); slide-count mismatch; icon-font text.
+  HARD  : missing/empty notes (when required); slide-count mismatch; icon-font text;
+          outline mismatches (count / title / citation) when --outline is given.
   SOFT  : notes outside the word band; content slide with no citation; suspicious
           icon-ligature tokens; fidelity misses. With --strict these also fail the run.
+Use --strict for final delivery so fidelity misses fail the build.
 
 The title and closing slides are exempt from the word band and the citation-presence
 check by default (house style keeps them short); override with --band-exempt/--cite-exempt.
@@ -22,10 +33,12 @@ check by default (house style keeps them short); override with --band-exempt/--c
 Usage:
   python3 verify_deck.py --deck deck_REDESIGN.pptx
   python3 verify_deck.py --deck deck_REDESIGN.pptx --baseline deck_BACKUP_notes.pptx
-  python3 verify_deck.py --deck deck_REDESIGN.pptx --source "01. Module Title.md" --strict
+  python3 verify_deck.py --deck deck_REDESIGN.pptx --outline m01_outline.json \\
+      --source "01. Module Title.md" --refmap m01_refmap.json --strict
   python3 verify_deck.py --deck deck.pptx --no-require-notes   # citations-only pass
 """
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -41,13 +54,21 @@ ICON_FONTS = re.compile(r"material\s*(symbols|icons)|font\s*awesome|glyphicons",
 # sit alone in a run -- a soft signal, since legitimate code samples also use snake_case.
 LIGATURE = re.compile(r"^[a-z]{2,}(?:_[a-z]{2,}){1,3}$")
 
-# Inline citation shapes the deck uses: author-date and bare author-name.
-#   (Park & Choo, 2024) | (Sun et al., 2025) | (Kulkarni, 2024) | (Nash)
+# Inline citation shapes the deck uses: author-date, bare author-name, org-with-year.
+#   (Park & Choo, 2024) | (Sun et al., 2025) | (Kulkarni, 2024) | (Nash) | (NIST, 2024)
+# The lookahead requires a year somewhere in the parenthetical OR a lowercase letter in
+# the first name token, so ALL-CAPS acronyms like (REFINE) / (AI) do NOT count.
 CITATION = re.compile(
-    r"\(([A-Z][A-Za-zÀ-ſ.'-]+)"
+    r"\((?=[^()]*\d{4}|[A-Z][A-Za-zÀ-ſ.'-]*[a-zà-ſ])"
+    r"([A-Z][A-Za-zÀ-ſ.'-]+)"
     r"(?:\s+et al\.|\s+(?:&|and)\s+[A-Z][A-Za-zÀ-ſ.'-]+)?"
     r"(?:\s*,\s*\d{4}[a-z]?)?\)"
 )
+# Numbered cites like [1] or [2, 5] (IEEE style on slides)
+NUMBERED_CITE = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+# Surname tokens inside a matched citation: must contain a lowercase letter, which
+# filters 'et'/'al'/'and' (no leading capital) and years/acronyms.
+SURNAME_IN_CITE = re.compile(r"[A-Z][A-Za-zÀ-ſ'-]*[a-zà-ſ][A-Za-zÀ-ſ'-]*")
 
 # Stat-like numbers worth checking against the source: has %, a decimal, a thousands
 # comma, or an integer value > 20 (filters out chip/step/index numerals).
@@ -106,14 +127,35 @@ def verify(args):
         source_text = sp.read_text(encoding="utf-8", errors="replace")
         source_flat = source_text.replace(",", "")     # match 18000 against "18,000" too
 
+    outline = None
+    if args.outline:
+        op = Path(args.outline)
+        if not op.is_file():
+            sys.exit(f"ERROR: --outline not found: {op}")
+        outline = json.loads(op.read_text(encoding="utf-8"))
+        if not outline.get("slides"):
+            sys.exit(f"ERROR: --outline {op} has no 'slides' list")
+
+    refmap = None
+    if args.refmap:
+        rp = Path(args.refmap)
+        if not rp.is_file():
+            sys.exit(f"ERROR: --refmap not found: {rp}")
+        refmap = json.loads(rp.read_text(encoding="utf-8")).get("entries", {})
+
     hard, soft = [], []
 
-    # --- slide count ---
+    # --- slide count (precedence: --expect > outline > --baseline) ---
     expected = args.expect
+    if expected is None and outline is not None:
+        expected = len(outline["slides"])
     if expected is None and args.baseline:
         expected = len(Presentation(args.baseline).slides)
     if expected is not None and n != expected:
         hard.append(f"slide count is {n}, expected {expected}")
+
+    slide_texts = {}                      # kept for the outline checks below
+    numbered_without_refmap = False
 
     for i, s in enumerate(slides, 1):
         # collect text + fonts on this slide
@@ -128,6 +170,7 @@ def verify(args):
                     if r.font.name:
                         fonts.add(r.font.name)
         slide_text = " ".join(texts)
+        slide_texts[i] = slide_text
 
         # --- icon-font (hard) ---
         bad_fonts = [f for f in fonts if ICON_FONTS.search(f or "")]
@@ -147,27 +190,72 @@ def verify(args):
             soft.append(f"S{i}: notes {wc} words (band {args.min_words}-{args.max_words})")
 
         # --- citations present (soft, informational) ---
-        cites = CITATION.findall(slide_text)
-        if not cites and i not in cite_exempt:
+        cite_strs = [m.group(0) for m in CITATION.finditer(slide_text)]
+        numbered_ids = sorted({t.strip() for g in NUMBERED_CITE.findall(slide_text)
+                               for t in g.split(",")}, key=int)
+        if not cite_strs and not numbered_ids and i not in cite_exempt:
             soft.append(f"S{i}: no inline citation detected")
 
         # --- fidelity vs source (soft) ---
         if source_text is not None:
-            for surname in set(cites):
-                lead = re.match(r"[A-Z][A-Za-zÀ-ſ'-]+", surname)
-                if lead and lead.group(0) not in source_text:
-                    soft.append(f"S{i}: cited surname '{lead.group(0)}' not found in source")
-            no_cite_text = CITATION.sub(" ", slide_text)
+            # author-date / bare-name cites: every surname + the year must appear
+            for cite in sorted(set(cite_strs)):
+                for name in set(SURNAME_IN_CITE.findall(cite)):
+                    if name not in source_text:
+                        soft.append(f"S{i}: cited surname '{name}' not found in source")
+                ym = re.search(r"\d{4}", cite)
+                if ym and ym.group(0) not in source_text:
+                    soft.append(f"S{i}: cited year '{ym.group(0)}' not found in source")
+            # numbered cites: resolve via the refmap, then check those surnames
+            if numbered_ids and refmap is not None:
+                for nid in numbered_ids:
+                    entry = refmap.get(nid)
+                    if not entry:
+                        soft.append(f"S{i}: cites [{nid}] but refmap has no entry {nid}")
+                        continue
+                    for name in entry.get("surnames", []):
+                        if name not in source_text:
+                            soft.append(f"S{i}: [{nid}] surname '{name}' not found in source")
+            elif numbered_ids and refmap is None:
+                numbered_without_refmap = True
+            no_cite_text = NUMBERED_CITE.sub(" ", CITATION.sub(" ", slide_text))
             for num in set(stat_numbers(no_cite_text)):
                 plain = num.replace(",", "")
                 if num not in source_text and plain not in source_flat:
                     soft.append(f"S{i}: number '{num}' not found in source")
 
+    # --- outline enforcement (HARD): the Phase 0 plan is the source of truth ---
+    if outline is not None:
+        def norm(t):
+            return re.sub(r"\s+", " ", t).strip().casefold()
+        for osl in outline["slides"]:
+            k = osl.get("n")
+            if not isinstance(k, int) or not 1 <= k <= n:
+                hard.append(f"outline slide n={k!r} is out of range for a {n}-slide deck")
+                continue
+            st = norm(slide_texts.get(k, ""))
+            title = osl.get("title") or ""
+            if title and norm(title) not in st:
+                hard.append(f"S{k}: outline title {title!r} not found on slide")
+            for c in osl.get("citations") or []:
+                if norm(c) not in st:
+                    hard.append(f"S{k}: outline citation '{c}' not found on slide")
+        # consume the outline's citation_style declaration (see C2/C3)
+        if outline.get("citation_style") == "numbered" and refmap is None and source_text is not None:
+            soft.append("outline declares numbered citation style — pass --refmap "
+                        "mNN_refmap.json so [n] cites can be fidelity-checked")
+    if numbered_without_refmap and source_text is not None:
+        soft.append("numbered [n] citations found on slides but no --refmap given — "
+                    "they count for citation presence but were not fidelity-checked")
+
     # --- report ---
     print(f"Deck: {args.deck}")
     print(f"Slides: {n}" + (f" (expected {expected})" if expected is not None else ""))
+    if args.outline:
+        print(f"Outline enforced: {args.outline}")
     if args.source:
-        print(f"Source fidelity: checked against {args.source}")
+        print(f"Source fidelity: checked against {args.source}"
+              + (f" (refmap: {args.refmap})" if args.refmap else ""))
     print(f"HARD failures: {len(hard)} | SOFT warnings: {len(soft)}\n")
     for h in hard:
         print(f"  [FAIL] {h}")
@@ -184,11 +272,13 @@ def verify(args):
 def main():
     ap = argparse.ArgumentParser(description="QA gate for a research deck (.pptx).")
     ap.add_argument("--deck", required=True, help="deck to check")
-    ap.add_argument("--source", help="source module .md for fidelity checks (names, numbers)")
-    ap.add_argument("--expect", type=int, help="expected slide count")
+    ap.add_argument("--source", help="source module .md for fidelity checks (names, years, numbers)")
+    ap.add_argument("--outline", help="mNN_outline.json — enforce the Phase 0 plan (count, titles, citations; HARD)")
+    ap.add_argument("--refmap", help="mNN_refmap.json — resolve numbered [n] cites for fidelity checks")
+    ap.add_argument("--expect", type=int, help="expected slide count (overrides --outline/--baseline)")
     ap.add_argument("--baseline", help="another deck to read the expected slide count from")
-    ap.add_argument("--min-words", type=int, default=180, help="notes word floor (default 180)")
-    ap.add_argument("--max-words", type=int, default=210, help="notes word ceiling (default 210)")
+    ap.add_argument("--min-words", type=int, default=200, help="notes word floor (default 200)")
+    ap.add_argument("--max-words", type=int, default=270, help="notes word ceiling (default 270)")
     ap.add_argument("--band-exempt", default="first,last",
                     help="slides exempt from the word band (default: first,last)")
     ap.add_argument("--cite-exempt", default="first,last",

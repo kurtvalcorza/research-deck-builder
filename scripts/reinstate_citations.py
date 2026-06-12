@@ -96,12 +96,16 @@ def main():
             print(f"!!! S{sl} | {sub!r} matched {len(matches)} (need exactly 1)")
             problems += 1
             continue
+        if not matches[0].runs:
+            print(f"!!! S{sl} | {sub!r} matched a paragraph with no runs (cannot append)")
+            problems += 1
+            continue
         para_text = "".join(r.text for r in matches[0].runs)
         if cite in para_text:
             print(f"SKIP S{sl} -> {cite} (already present)")
             skipped += 1
             continue
-        if args.apply and matches[0].runs:
+        if args.apply:
             append_cite(matches[0].runs[-1], cite)
         print(f"OK  S{sl} -> {cite}")
 

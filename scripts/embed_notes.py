@@ -14,7 +14,7 @@ Subcommands:
             topup or hand edit so the JSON stays the source of truth -- a rebuild bakes
             notes from the JSON, so stale JSON silently reverts in-deck edits.
 
-The word band (default 180-210 ~= 90-120s at ~2.3 words/sec, ~138 wpm) applies to content
+The word band (default 200-270 ~= 90-120s at ~2.3 words/sec, ~138 wpm) applies to content
 slides. The title and closing slides are intentionally short (house style: 30-60 words),
 so report exempts the first and last slide by default (--exempt to override).
 
@@ -36,7 +36,7 @@ import time
 from pptx import Presentation
 
 WPS = 2.3          # words/sec estimate for the ~seconds readout (~138 wpm)
-MIN_W, MAX_W = 180, 210
+MIN_W, MAX_W = 200, 270    # ~90-120s at WPS (keep in sync with verify_deck.py defaults)
 
 
 def parse_exempt(spec, n_slides):

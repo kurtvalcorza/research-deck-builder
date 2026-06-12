@@ -5,7 +5,8 @@ description: >
   references and a bibliography) into a polished, presenter-ready PowerPoint deck:
   source intake and slide outline, accurate inline citations, ready-to-read speaker
   notes, a consistent dark + blue visual system with vector icons, and a programmatic
-  QA gate that verifies citations and stats against the source. Also repairs/upgrades
+  QA gate that enforces the approved outline and checks that every cited surname and
+  on-slide stat appears in the source. Also repairs/upgrades
   existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
   Triggers: "turn this module into slides", "build a deck from this research",
   "cross-check citations in the deck", "write speaker notes", "redesign these slides",
@@ -76,8 +77,9 @@ npm install pptxgenjs          # run in the dir where you'll build decks
   new text inherits that run's formatting (`reinstate_citations.py` does this).
 - **Icons = vector shapes, never an icon font** — fonts break on machines without them;
   `verify_deck.py` hard-fails any leftover icon-font text.
-- **Render dirs get locked** by LibreOffice. Use a fresh timestamped dir each render
-  (`render_and_check.sh` does this); don't try to delete or reuse the old one.
+- **Render dirs get locked** by LibreOffice while it runs. Use a fresh timestamped dir
+  each render (`render_and_check.sh` does this, and cleans it up afterwards — the lock
+  only persists while soffice is running); never reuse a previous render dir.
 
 ---
 
@@ -124,7 +126,7 @@ Goal: `mNN_script.json` — a spoken script for every slide, written from the ou
 
 **Style spec (see `references/script_template.json` for a worked example):**
 
-- **Length:** content slides 90–120 seconds ≈ **180–210 words** (~2.3 words/sec,
+- **Length:** content slides 90–120 seconds ≈ **200–270 words** (~2.3 words/sec,
   ~138 wpm). **Title and closing slides: 30–60 words** — they are exempt from the band.
 - **Tone:** clear, concise, professional, spoken aloud. Audience = researchers learning
   to use AI rigorously.
@@ -203,8 +205,8 @@ Two gates plus a visual check. Run all three before delivery.
    edge margins. Fix, re-render only affected slides. **Stop after one fix-and-verify
    cycle** unless a new user-visible defect appears. Delete the review folder when done.
 3. **Recovery:** if a gate fails after an apply, restore the phase backup
-   (`copy deck_BACKUP_<phase>.pptx deck.pptx`), fix the JSON artifact, re-apply.
-   Never iterate on a deck whose last gate run failed.
+   (`cp deck_BACKUP_<phase>.pptx deck.pptx`; `copy` on Windows), fix the JSON artifact,
+   re-apply. Never iterate on a deck whose last gate run failed.
 
 Finally present the finished deck with a short change summary, and report any fidelity
 warnings you accepted (with reasons).
@@ -228,8 +230,9 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
    ```
 
    To recolor the accent across a built deck: the accent is one hex everywhere, so
-   unzip the `.pptx`, `sed -i -E 's/OLDHEX/NEWHEX/Ig'` over `ppt/**/*.xml`, re-zip —
-   back up to `_PRECOLOR.pptx` first.
+   unzip the `.pptx`, run `find ppt -name '*.xml' -exec sed -i -E 's/OLDHEX/NEWHEX/Ig' {} +`
+   (GNU sed), then re-zip from inside the extracted dir so `[Content_Types].xml` stays
+   at the archive root — back up to `_PRECOLOR.pptx` first.
 3. **Citations:** compare deck text against the source (use `map_references.py` for the
    reference map), list dropped attributions, author `citations.json`
    (`[[slide, "unique substring", "(Cite, YYYY)"], …]` — see
