@@ -8,6 +8,9 @@ is replaced. Content, citations, and speaker notes are untouched.
 Safety: dry run by default (reports what it would change); --apply writes, auto-backing
 up to <deck>_BACKUP_bg.pptx first (an existing backup is never overwritten).
 
+Compatibility: relies on slide.part.get_or_add_image_part, a non-public python-pptx
+API -- verified on python-pptx 1.0.2; requirements.txt pins <2 for this reason.
+
 Usage:
   python3 apply_background.py --deck deck.pptx --img assets/background.jpeg          # dry run
   python3 apply_background.py --deck deck.pptx --img assets/background.jpeg --apply

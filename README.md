@@ -1,9 +1,18 @@
 # Research Deck Builder
 
 Turn a written research/training module (`.md` with references) into a polished,
-presenter-ready PowerPoint deck — outline, faithful citations, a spoken speaker script,
-and a clean dark + blue visual design that renders correctly anywhere. Also repairs
-existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
+presenter-ready PowerPoint deck — outline, source-checked citations, a spoken speaker
+script, and a clean dark + blue visual design with no icon-font dependencies (icons are
+vector shapes; text fonts substitute gracefully where Segoe UI isn't installed). Also
+repairs existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
+
+## Install as a Claude Code skill
+
+Copy or clone this folder to `~/.claude/skills/research-deck-builder/` (personal) or
+`<project>/.claude/skills/research-deck-builder/` (project) — the folder name must
+match the `name` in `SKILL.md`'s frontmatter. `SKILL.md` is the method the agent
+follows; this README is the human quick start. Work in a separate deck workspace: run
+`npm install` there and keep decks and `mNN_*.json` artifacts out of the skill folder.
 
 ---
 
@@ -91,7 +100,8 @@ total). The source modules and finished decks are **not** included in this repo,
 content blocks, citations) as a worked example you can follow end to end. Module 01's
 trace through the pipeline:
 `01. Advanced Prompt Engineering for Research Tasks.md` → outline → script → build →
-finished deck.
+finished deck. Part B is the only pipeline artifact reproduced (and thus verifiable)
+in this repo.
 
 ## Golden rules (full list in SKILL.md)
 

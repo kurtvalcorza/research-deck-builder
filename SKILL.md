@@ -11,8 +11,9 @@ description: >
   Triggers: "turn this module into slides", "build a deck from this research",
   "cross-check citations in the deck", "write speaker notes", "redesign these slides",
   "make a presenter script". Boundary: use this for decks built from a cited
-  research/training source document; for event, policy, keynote, or general-purpose
-  decks, use presentation-studio instead.
+  research/training source document; event, policy, keynote, or general-purpose
+  decks are out of scope (use a general-purpose presentation skill such as
+  presentation-studio, if available).
 ---
 
 # Research Deck Builder
@@ -50,13 +51,19 @@ pip install python-pptx        # add --break-system-packages on externally-manag
 npm install pptxgenjs          # run in the dir where you'll build decks
 ```
 
+- **Install & working dir:** this folder lives at `~/.claude/skills/research-deck-builder/`
+  (or `<project>/.claude/skills/research-deck-builder/`). Invoke its scripts by path from
+  your deck **workspace** — decks and the `mNN_*.json` artifacts live in the workspace,
+  never in the skill folder; `npm install pptxgenjs` runs in the workspace too.
 - **Windows (local):** run python/node natively. For Phase 3 rendering, install
   LibreOffice + poppler (`scoop install libreoffice poppler` or choco), or use WSL;
   `render_and_check.sh` is a bash script. If rendering isn't available, still run
   `verify_deck.py` (structural + fidelity gates) and inspect the deck in PowerPoint.
-- **POSIX sandbox (e.g. a cloud agent shell):** soffice/poppler are usually
-  preinstalled. If file tools and the shell see different mount paths, copy renders
-  into a folder the file tools can reach before viewing, and clean up after.
+- **POSIX sandbox (e.g. a cloud agent shell):** check availability first —
+  `command -v soffice pdftoppm`; either may be missing (if so, fall back to
+  `verify_deck.py` only, as on Windows). If file tools and the shell see different
+  mount paths, copy renders into a folder the file tools can reach before viewing,
+  and clean up after.
 - Always work on a **copy** of the deck in a working dir, never the only original.
 
 ---
@@ -152,7 +159,10 @@ double-quotes inside values.
 Goal: `NN Short_Name_REDESIGN.pptx` built from the outline, with citations in the slide
 text and notes baked in.
 
-1. Copy `scripts/build_deck_template.js` to a per-module `build_mNN.js`.
+1. Copy `scripts/build_deck_template.js` to a per-module `build_mNN.js`, and copy
+   `assets/background.jpeg` from the skill folder next to it — the template's `BG_IMAGE`
+   path is workspace-relative. A missing image is not fatal: the build warns loudly and
+   falls back to the solid background (`BG_IMAGE=''` opts out deliberately).
 2. Fill one IIFE per slide from `mNN_outline.json`. The template ships **worked sample
    slides for archetypes A1, A2, A3, A5, A7, A8, A10, A11** — copy the closest sample
    and refill it (the sizing "avoid" rules are baked in). A4/A6/A9 build from the same
@@ -180,7 +190,8 @@ text and notes baked in.
 - **Fonts:** headings `Segoe UI Semibold`, body `Segoe UI`, code `Consolas`. Title
   30pt, section header 16–19pt, body 12–14pt, captions 9.5–10pt, big stats 44–60pt.
 - **Background:** full-bleed royal-blue radial-gradient image (`assets/background.jpeg`,
-  16:9), set via `BG_IMAGE` in the template (`BG_IMAGE=''` falls back to solid BG).
+  16:9), set via `BG_IMAGE` in the template (`BG_IMAGE=''` or a missing image falls
+  back to solid BG — missing prints a loud warning).
 - **Motif:** accent vertical bar left of titles; corner brackets on title/closing;
   cards = rounded rects (`rectRadius ~0.09`) with subtle outer shadow.
 - **Layout:** 13.333 × 7.5 in (16:9); margins ≥ 0.6 in. Full archetype catalog and the
