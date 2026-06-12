@@ -59,8 +59,9 @@ python3 scripts/map_references.py --source "01. Module Title.md" --out m01_refma
 # Phase 2 — build (copy build_deck_template.js → build_m01.js, fill slides from the outline)
 node build_m01.js m01_script.json "01 Short_Name_REDESIGN.pptx"
 
-# Phase 3 — QA (structural + fidelity gate, then visual render)
-python3 scripts/verify_deck.py --deck "01 Short_Name_REDESIGN.pptx" --source "01. Module Title.md" --expect 15
+# Phase 3 — QA (outline enforcement + structural + fidelity gate, then visual render)
+python3 scripts/verify_deck.py --deck "01 Short_Name_REDESIGN.pptx" \
+    --outline m01_outline.json --source "01. Module Title.md"   # add --refmap m01_refmap.json for [n] cites
 ./scripts/render_and_check.sh "01 Short_Name_REDESIGN.pptx" /path/to/viewable/_review
 ```
 

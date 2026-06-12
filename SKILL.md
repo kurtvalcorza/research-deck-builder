@@ -30,9 +30,13 @@ research-training series (94 slides).
   citations reinstated, notes embedded, or a visual re-skin. See "Repair track" below.
 
 **Source-of-truth rule:** the JSON artifacts (`mNN_outline.json`, `mNN_script.json`)
-are authoritative for any (re)build. After ANY in-deck notes edit (topup, hand edit),
-immediately re-sync with `embed_notes.py export` — otherwise a later rebuild bakes the
-stale JSON and silently reverts your edits.
+are authoritative for any (re)build — and `verify_deck.py --outline` enforces it
+(count, titles, citations are HARD failures). After ANY in-deck notes edit (topup,
+hand edit), immediately re-sync with `embed_notes.py export` — otherwise a later
+rebuild bakes the stale JSON and silently reverts your edits. The JSONs are keyed by
+slide number: after ANY reorder, insertion, or deletion, re-key the outline and script
+JSONs, then re-run `embed_notes.py report` and `verify_deck.py --outline` — nothing
+else detects notes baked onto the wrong slides.
 
 ---
 
@@ -108,7 +112,11 @@ Goal: a reviewed `mNN_outline.json` — the authoritative slide-by-slide content
      directly onto archetypes.
    - **Decide the citation style** for the deck: match the source's author-date style if
      it has one; if the bibliography has duplicate or odd surnames, prefer author-date
-     `(Park & Choo, 2024)` for disambiguation.
+     `(Park & Choo, 2024)` for disambiguation. Record it as `citation_style` in the
+     outline — `verify_deck.py` reads it. The QA gate recognizes these on-slide forms:
+     author-date `(Park & Choo, 2024)`, bare-name `(Nash)`, org-with-year `(NIST, 2024)`,
+     and numbered `[1]` (numbered decks need `--refmap mNN_refmap.json` at QA time for
+     fidelity checks). ALL-CAPS parentheticals like `(REFINE)` do not count as citations.
 4. **Assign an archetype to every slide** from the catalog in `SLIDE_BLUEPRINTS.md`
    (A1–A11). Rules: open with **A1**, close with **A11**, never two adjacent slides
    with the same archetype, aim for one **A3 stat** and one **A5 matrix** per module
@@ -186,19 +194,24 @@ bars; accent lines *under* titles; stat numbers in boxes too narrow (44pt "85%" 
 
 Two gates plus a visual check. Run all three before delivery.
 
-1. **Structural + fidelity gate** — `verify_deck.py`:
+1. **Structural + outline + fidelity gate** — `verify_deck.py`:
 
    ```bash
    python3 scripts/verify_deck.py --deck "NN Short_Name_REDESIGN.pptx" \
-       --source "NN. Module Title.md" --expect <N>
+       --outline mNN_outline.json --source "NN. Module Title.md" \
+       --refmap mNN_refmap.json    # refmap needed only for numbered [n] decks
    ```
 
    - **HARD failures** (non-zero exit): a slide with no speaker notes; slide count ≠
-     `--expect`/`--baseline`; any leftover icon-font text.
+     outline/`--expect`/`--baseline`; any leftover icon-font text; an outline title or
+     outline citation missing from its slide (this is the source-of-truth enforcement).
    - **SOFT warnings:** notes outside the word band (title/closing exempt by default);
      a content slide with no citation; suspected icon-ligature artifacts; **fidelity
-     misses** — a cited surname or an on-slide stat that does not appear in the source.
-     Use `--strict` to fail on these too; `--no-require-notes` for a citations-only pass.
+     misses** — a cited surname or year, a refmap-resolved `[n]` surname, or an
+     on-slide stat that does not appear in the source. Fidelity is a *presence* check:
+     it cannot catch a right-surname-wrong-claim attribution — that pairing stays a
+     human read. `--no-require-notes` for a citations-only pass.
+   - **For final delivery, run with `--strict`** so fidelity misses fail the build too.
 2. **Visual render check** — `render_and_check.sh deck.pptx <viewable-dir>` renders
    per-slide JPGs in a fresh dir. Inspect every slide for: text overflow/wrap, overlap,
    citations colliding with content, broken icons, low contrast, uneven gaps, < 0.5 in
@@ -274,7 +287,8 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
 - `SLIDE_BLUEPRINTS.md` — archetype catalog (A1–A11) + the Module 01 worked example map
   + cross-module reuse notes. **Read during Phase 0 archetype assignment.**
 - `assets/background.jpeg` — full-bleed royal-blue background (16:9).
-- `scripts/map_references.py` — Phase 0: bibliography ↔ in-text citation map + scrambled-bib warnings.
+- `scripts/map_references.py` — Phase 0: bibliography ↔ in-text citation map + scrambled-bib
+  warnings (numbered IEEE-style bibliographies only; warns and skips author-date lists).
 - `scripts/extract_deck_text.py` — dump slide text/notes (`--json` for tooling).
 - `scripts/build_deck_template.js` — design system + helpers + archetype samples;
   args: `[script.json] [out.pptx]`; warns loudly if the script JSON is missing.
@@ -283,7 +297,7 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
   first/last slides; auto-backup.
 - `scripts/apply_background.py` — re-skin backgrounds; dry-run default; auto-backup.
 - `scripts/render_and_check.sh` — render JPGs in a fresh dir for visual QA.
-- `scripts/verify_deck.py` — structural gate + `--source` fidelity gate; non-zero exit
-  on hard failures.
+- `scripts/verify_deck.py` — structural gate + `--outline` plan enforcement + `--source`
+  fidelity gate (`--refmap` resolves numbered `[n]` cites); non-zero exit on hard failures.
 - `references/` — `outline_template.json`, `script_template.json`,
   `citations_template.json`, `topups_template.json`.
