@@ -17,8 +17,8 @@ description: >
 # Research Deck Builder
 
 Complete pipeline for converting a source module (`.md` with a bibliography) into a
-finished, branded, presenter-ready deck (`.pptx`). Proven on the NAIRA "AI in Research"
-series (7 modules, 94 slides).
+finished, branded, presenter-ready deck (`.pptx`). Proven on a seven-module
+research-training series (94 slides).
 
 ## Two tracks
 
@@ -263,8 +263,8 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
   (keep these in a scratch/outputs dir, not under version control)
 - Working deck: `NN Short_Name.pptx` → auto-backups `NN Short_Name_BACKUP_<phase>.pptx`
 - Final: `NN Short_Name_REDESIGN.pptx`
-- Worked example: the NAIRA "AI in Research" series (sources and finished decks not shipped
-  in this repo). `SLIDE_BLUEPRINTS.md` Part B reproduces Module 01's slide map in full.
+- Worked example: a seven-module research-training series (sources and finished decks not
+  shipped in this repo). `SLIDE_BLUEPRINTS.md` Part B reproduces Module 01's slide map in full.
 
 ## Companion files
 

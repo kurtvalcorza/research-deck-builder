@@ -86,9 +86,9 @@ All editing scripts auto-backup to phase-named files (`_BACKUP_citations`,
 
 ---
 
-## Reference implementation (NAIRA "AI in Research" series)
+## Reference implementation
 
-This pipeline was proven on a seven-module training series ("AI in Research", 94 slides
+This pipeline was proven on a seven-module research-training series (94 slides
 total). The source modules and finished decks are **not** included in this repo, but
 `SLIDE_BLUEPRINTS.md` Part B reproduces Module 01's full 15-slide map (archetype, title,
 content blocks, citations) as a worked example you can follow end to end. Module 01's
