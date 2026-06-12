@@ -1,3 +1,6 @@
 # Python dependency for the deck-building and QA scripts (Phases 0-3).
 # Install: pip install -r requirements.txt
-python-pptx>=0.6.21
+# Upper bound: apply_background.py uses SlidePart.get_or_add_image_part, a
+# non-public python-pptx API; verified working on 1.0.2 (2026-06-12), so pin <2
+# and re-test before lifting.
+python-pptx>=0.6.21,<2

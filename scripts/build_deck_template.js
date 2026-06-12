@@ -20,7 +20,8 @@ const SCRIPT_JSON = process.argv[2] || 'mNN_script.json';
 let NOTES = {};
 try {
   NOTES = JSON.parse(fs.readFileSync(SCRIPT_JSON, 'utf8'));
-  delete NOTES._comment; delete NOTES._house_style;
+  // ignore every _-prefixed key, matching the Python scripts' convention
+  for (const k of Object.keys(NOTES)) if (k.startsWith('_')) delete NOTES[k];
   console.log(`Speaker script loaded: ${SCRIPT_JSON} (${Object.keys(NOTES).length} slides)`);
 } catch (e) {
   console.warn(`*** WARNING: no speaker-script JSON at '${SCRIPT_JSON}' — notes will NOT be baked.`);
@@ -43,10 +44,16 @@ const HF='Segoe UI Semibold', HF2='Segoe UI', BF='Segoe UI', MONO='Consolas';
 const M=0.62, W=13.333, H=7.5;
 
 // Full-bleed background image (royal-blue gradient). Set to '' to fall back to the solid BG
-// color. Path is relative to where you run `node` -- copy assets/background.jpeg next to it,
-// or point at ../assets/background.jpeg. The dark cards + teal accents read on either the
-// image or the solid 0E1A2B. If the image is missing, pptxgenjs throws, so blank it to disable.
-const BG_IMAGE = 'assets/background.jpeg';
+// color. Path is relative to where you run `node` -- copy assets/background.jpeg from the
+// skill folder next to this script, or point at an absolute path. The dark cards + teal
+// accents read on either the image or the solid 0E1A2B. A missing image falls back to the
+// solid color (with a loud warning) instead of letting pptxgenjs throw at write time.
+let BG_IMAGE = 'assets/background.jpeg';
+if (BG_IMAGE && !fs.existsSync(BG_IMAGE)) {
+  console.warn(`*** WARNING: background image '${BG_IMAGE}' not found — using solid #0E1A2B background.`);
+  console.warn('*** Copy assets/background.jpeg next to this script, or set BG_IMAGE to an absolute path.');
+  BG_IMAGE = '';
+}
 
 // ---- helpers ----
 function slideBase(){ const s=pptx.addSlide();

@@ -26,5 +26,12 @@ if [ ! -f d.pdf ]; then
 fi
 pdftoppm -jpeg -r 110 d.pdf s                            # s-01.jpg, s-02.jpg, ...
 cp s-*.jpg "$VIEWDIR"/
-echo "Rendered $(ls s-*.jpg | wc -l) slides into $VIEWDIR (working dir: $D)"
+N=$(ls s-*.jpg | wc -l)
+# soffice has exited by now, so its dir lock is gone -- clean up best-effort
+cd ..
+if rm -rf "$D" 2>/dev/null; then
+  echo "Rendered $N slides into $VIEWDIR (temp render dir cleaned up)"
+else
+  echo "Rendered $N slides into $VIEWDIR (could not remove $D -- delete it manually later)"
+fi
 echo "Open the JPGs to inspect for overflow, overlap, broken icons, low contrast."

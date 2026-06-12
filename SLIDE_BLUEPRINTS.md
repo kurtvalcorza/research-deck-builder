@@ -97,6 +97,9 @@ small support `card`s (each a short teal tick + label + line); centered citation
 
 ## Part B — Worked example: Module 01 (15 slides)
 
+*(The only pipeline artifact reproduced in this repo — the source modules and finished
+decks of the reference series are not shipped.)*
+
 | # | Archetype | Title | Content blocks | Citation(s) |
 |---|-----------|-------|----------------|-------------|
 | 1 | A1 Title | Advanced Prompt Engineering for Research Tasks | eyebrow MODULE 01; subtitle "A methodological playbook…" | — |

@@ -2,10 +2,11 @@
 """Dump a deck's on-slide text (and optionally its speaker notes), walking groups.
 
 Used in two places in the method:
-  * Phase 1 (citations) -- read the slide text to compare each claim against the source
-    and find dropped attributions.
-  * Phase 2/3 (notes/redesign) -- read the actual slide order/content so the spoken
-    script and the rebuild map to what's really on each slide.
+  * REPAIR track, citations step -- read the slide text to compare each claim against
+    the source and find dropped attributions.
+  * BUILD Phase 3 QA / REPAIR notes & rebuild steps -- read the actual slide
+    order/content so the spoken script and the rebuild map to what's really on
+    each slide.
 
 This replaces the copy-paste extraction snippet that used to live inline in SKILL.md.
 

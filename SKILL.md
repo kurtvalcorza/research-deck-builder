@@ -5,13 +5,15 @@ description: >
   references and a bibliography) into a polished, presenter-ready PowerPoint deck:
   source intake and slide outline, accurate inline citations, ready-to-read speaker
   notes, a consistent dark + blue visual system with vector icons, and a programmatic
-  QA gate that verifies citations and stats against the source. Also repairs/upgrades
+  QA gate that enforces the approved outline and checks that every cited surname and
+  on-slide stat appears in the source. Also repairs/upgrades
   existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
   Triggers: "turn this module into slides", "build a deck from this research",
   "cross-check citations in the deck", "write speaker notes", "redesign these slides",
   "make a presenter script". Boundary: use this for decks built from a cited
-  research/training source document; for event, policy, keynote, or general-purpose
-  decks, use presentation-studio instead.
+  research/training source document; event, policy, keynote, or general-purpose
+  decks are out of scope (use a general-purpose presentation skill such as
+  presentation-studio, if available).
 ---
 
 # Research Deck Builder
@@ -29,9 +31,13 @@ research-training series (94 slides).
   citations reinstated, notes embedded, or a visual re-skin. See "Repair track" below.
 
 **Source-of-truth rule:** the JSON artifacts (`mNN_outline.json`, `mNN_script.json`)
-are authoritative for any (re)build. After ANY in-deck notes edit (topup, hand edit),
-immediately re-sync with `embed_notes.py export` — otherwise a later rebuild bakes the
-stale JSON and silently reverts your edits.
+are authoritative for any (re)build — and `verify_deck.py --outline` enforces it
+(count, titles, citations are HARD failures). After ANY in-deck notes edit (topup,
+hand edit), immediately re-sync with `embed_notes.py export` — otherwise a later
+rebuild bakes the stale JSON and silently reverts your edits. The JSONs are keyed by
+slide number: after ANY reorder, insertion, or deletion, re-key the outline and script
+JSONs, then re-run `embed_notes.py report` and `verify_deck.py --outline` — nothing
+else detects notes baked onto the wrong slides.
 
 ---
 
@@ -45,13 +51,19 @@ pip install python-pptx        # add --break-system-packages on externally-manag
 npm install pptxgenjs          # run in the dir where you'll build decks
 ```
 
+- **Install & working dir:** this folder lives at `~/.claude/skills/research-deck-builder/`
+  (or `<project>/.claude/skills/research-deck-builder/`). Invoke its scripts by path from
+  your deck **workspace** — decks and the `mNN_*.json` artifacts live in the workspace,
+  never in the skill folder; `npm install pptxgenjs` runs in the workspace too.
 - **Windows (local):** run python/node natively. For Phase 3 rendering, install
   LibreOffice + poppler (`scoop install libreoffice poppler` or choco), or use WSL;
   `render_and_check.sh` is a bash script. If rendering isn't available, still run
   `verify_deck.py` (structural + fidelity gates) and inspect the deck in PowerPoint.
-- **POSIX sandbox (e.g. a cloud agent shell):** soffice/poppler are usually
-  preinstalled. If file tools and the shell see different mount paths, copy renders
-  into a folder the file tools can reach before viewing, and clean up after.
+- **POSIX sandbox (e.g. a cloud agent shell):** check availability first —
+  `command -v soffice pdftoppm`; either may be missing (if so, fall back to
+  `verify_deck.py` only, as on Windows). If file tools and the shell see different
+  mount paths, copy renders into a folder the file tools can reach before viewing,
+  and clean up after.
 - Always work on a **copy** of the deck in a working dir, never the only original.
 
 ---
@@ -76,8 +88,9 @@ npm install pptxgenjs          # run in the dir where you'll build decks
   new text inherits that run's formatting (`reinstate_citations.py` does this).
 - **Icons = vector shapes, never an icon font** — fonts break on machines without them;
   `verify_deck.py` hard-fails any leftover icon-font text.
-- **Render dirs get locked** by LibreOffice. Use a fresh timestamped dir each render
-  (`render_and_check.sh` does this); don't try to delete or reuse the old one.
+- **Render dirs get locked** by LibreOffice while it runs. Use a fresh timestamped dir
+  each render (`render_and_check.sh` does this, and cleans it up afterwards — the lock
+  only persists while soffice is running); never reuse a previous render dir.
 
 ---
 
@@ -106,7 +119,11 @@ Goal: a reviewed `mNN_outline.json` — the authoritative slide-by-slide content
      directly onto archetypes.
    - **Decide the citation style** for the deck: match the source's author-date style if
      it has one; if the bibliography has duplicate or odd surnames, prefer author-date
-     `(Park & Choo, 2024)` for disambiguation.
+     `(Park & Choo, 2024)` for disambiguation. Record it as `citation_style` in the
+     outline — `verify_deck.py` reads it. The QA gate recognizes these on-slide forms:
+     author-date `(Park & Choo, 2024)`, bare-name `(Nash)`, org-with-year `(NIST, 2024)`,
+     and numbered `[1]` (numbered decks need `--refmap mNN_refmap.json` at QA time for
+     fidelity checks). ALL-CAPS parentheticals like `(REFINE)` do not count as citations.
 4. **Assign an archetype to every slide** from the catalog in `SLIDE_BLUEPRINTS.md`
    (A1–A11). Rules: open with **A1**, close with **A11**, never two adjacent slides
    with the same archetype, aim for one **A3 stat** and one **A5 matrix** per module
@@ -124,7 +141,7 @@ Goal: `mNN_script.json` — a spoken script for every slide, written from the ou
 
 **Style spec (see `references/script_template.json` for a worked example):**
 
-- **Length:** content slides 90–120 seconds ≈ **180–210 words** (~2.3 words/sec,
+- **Length:** content slides 90–120 seconds ≈ **200–270 words** (~2.3 words/sec,
   ~138 wpm). **Title and closing slides: 30–60 words** — they are exempt from the band.
 - **Tone:** clear, concise, professional, spoken aloud. Audience = researchers learning
   to use AI rigorously.
@@ -142,7 +159,10 @@ double-quotes inside values.
 Goal: `NN Short_Name_REDESIGN.pptx` built from the outline, with citations in the slide
 text and notes baked in.
 
-1. Copy `scripts/build_deck_template.js` to a per-module `build_mNN.js`.
+1. Copy `scripts/build_deck_template.js` to a per-module `build_mNN.js`, and copy
+   `assets/background.jpeg` from the skill folder next to it — the template's `BG_IMAGE`
+   path is workspace-relative. A missing image is not fatal: the build warns loudly and
+   falls back to the solid background (`BG_IMAGE=''` opts out deliberately).
 2. Fill one IIFE per slide from `mNN_outline.json`. The template ships **worked sample
    slides for archetypes A1, A2, A3, A5, A7, A8, A10, A11** — copy the closest sample
    and refill it (the sizing "avoid" rules are baked in). A4/A6/A9 build from the same
@@ -170,7 +190,8 @@ text and notes baked in.
 - **Fonts:** headings `Segoe UI Semibold`, body `Segoe UI`, code `Consolas`. Title
   30pt, section header 16–19pt, body 12–14pt, captions 9.5–10pt, big stats 44–60pt.
 - **Background:** full-bleed royal-blue radial-gradient image (`assets/background.jpeg`,
-  16:9), set via `BG_IMAGE` in the template (`BG_IMAGE=''` falls back to solid BG).
+  16:9), set via `BG_IMAGE` in the template (`BG_IMAGE=''` or a missing image falls
+  back to solid BG — missing prints a loud warning).
 - **Motif:** accent vertical bar left of titles; corner brackets on title/closing;
   cards = rounded rects (`rectRadius ~0.09`) with subtle outer shadow.
 - **Layout:** 13.333 × 7.5 in (16:9); margins ≥ 0.6 in. Full archetype catalog and the
@@ -184,27 +205,32 @@ bars; accent lines *under* titles; stat numbers in boxes too narrow (44pt "85%" 
 
 Two gates plus a visual check. Run all three before delivery.
 
-1. **Structural + fidelity gate** — `verify_deck.py`:
+1. **Structural + outline + fidelity gate** — `verify_deck.py`:
 
    ```bash
    python3 scripts/verify_deck.py --deck "NN Short_Name_REDESIGN.pptx" \
-       --source "NN. Module Title.md" --expect <N>
+       --outline mNN_outline.json --source "NN. Module Title.md" \
+       --refmap mNN_refmap.json    # refmap needed only for numbered [n] decks
    ```
 
    - **HARD failures** (non-zero exit): a slide with no speaker notes; slide count ≠
-     `--expect`/`--baseline`; any leftover icon-font text.
+     outline/`--expect`/`--baseline`; any leftover icon-font text; an outline title or
+     outline citation missing from its slide (this is the source-of-truth enforcement).
    - **SOFT warnings:** notes outside the word band (title/closing exempt by default);
      a content slide with no citation; suspected icon-ligature artifacts; **fidelity
-     misses** — a cited surname or an on-slide stat that does not appear in the source.
-     Use `--strict` to fail on these too; `--no-require-notes` for a citations-only pass.
+     misses** — a cited surname or year, a refmap-resolved `[n]` surname, or an
+     on-slide stat that does not appear in the source. Fidelity is a *presence* check:
+     it cannot catch a right-surname-wrong-claim attribution — that pairing stays a
+     human read. `--no-require-notes` for a citations-only pass.
+   - **For final delivery, run with `--strict`** so fidelity misses fail the build too.
 2. **Visual render check** — `render_and_check.sh deck.pptx <viewable-dir>` renders
    per-slide JPGs in a fresh dir. Inspect every slide for: text overflow/wrap, overlap,
    citations colliding with content, broken icons, low contrast, uneven gaps, < 0.5 in
    edge margins. Fix, re-render only affected slides. **Stop after one fix-and-verify
    cycle** unless a new user-visible defect appears. Delete the review folder when done.
 3. **Recovery:** if a gate fails after an apply, restore the phase backup
-   (`copy deck_BACKUP_<phase>.pptx deck.pptx`), fix the JSON artifact, re-apply.
-   Never iterate on a deck whose last gate run failed.
+   (`cp deck_BACKUP_<phase>.pptx deck.pptx`; `copy` on Windows), fix the JSON artifact,
+   re-apply. Never iterate on a deck whose last gate run failed.
 
 Finally present the finished deck with a short change summary, and report any fidelity
 warnings you accepted (with reasons).
@@ -228,8 +254,9 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
    ```
 
    To recolor the accent across a built deck: the accent is one hex everywhere, so
-   unzip the `.pptx`, `sed -i -E 's/OLDHEX/NEWHEX/Ig'` over `ppt/**/*.xml`, re-zip —
-   back up to `_PRECOLOR.pptx` first.
+   unzip the `.pptx`, run `find ppt -name '*.xml' -exec sed -i -E 's/OLDHEX/NEWHEX/Ig' {} +`
+   (GNU sed), then re-zip from inside the extracted dir so `[Content_Types].xml` stays
+   at the archive root — back up to `_PRECOLOR.pptx` first.
 3. **Citations:** compare deck text against the source (use `map_references.py` for the
    reference map), list dropped attributions, author `citations.json`
    (`[[slide, "unique substring", "(Cite, YYYY)"], …]` — see
@@ -271,7 +298,8 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
 - `SLIDE_BLUEPRINTS.md` — archetype catalog (A1–A11) + the Module 01 worked example map
   + cross-module reuse notes. **Read during Phase 0 archetype assignment.**
 - `assets/background.jpeg` — full-bleed royal-blue background (16:9).
-- `scripts/map_references.py` — Phase 0: bibliography ↔ in-text citation map + scrambled-bib warnings.
+- `scripts/map_references.py` — Phase 0: bibliography ↔ in-text citation map + scrambled-bib
+  warnings (numbered IEEE-style bibliographies only; warns and skips author-date lists).
 - `scripts/extract_deck_text.py` — dump slide text/notes (`--json` for tooling).
 - `scripts/build_deck_template.js` — design system + helpers + archetype samples;
   args: `[script.json] [out.pptx]`; warns loudly if the script JSON is missing.
@@ -280,7 +308,7 @@ FIRST** (it recreates slides from scratch), then citations, then notes, then QA.
   first/last slides; auto-backup.
 - `scripts/apply_background.py` — re-skin backgrounds; dry-run default; auto-backup.
 - `scripts/render_and_check.sh` — render JPGs in a fresh dir for visual QA.
-- `scripts/verify_deck.py` — structural gate + `--source` fidelity gate; non-zero exit
-  on hard failures.
+- `scripts/verify_deck.py` — structural gate + `--outline` plan enforcement + `--source`
+  fidelity gate (`--refmap` resolves numbered `[n]` cites); non-zero exit on hard failures.
 - `references/` — `outline_template.json`, `script_template.json`,
   `citations_template.json`, `topups_template.json`.

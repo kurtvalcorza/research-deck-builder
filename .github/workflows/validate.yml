@@ -1,0 +1,22 @@
+# G2: contract drift guard (scripts/validate-contracts.sh) on every PR/push
+# that can move the docs and the scripts out of sync.
+name: validate-contracts
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - SKILL.md
+      - README.md
+      - SLIDE_BLUEPRINTS.md
+      - 'scripts/**'
+      - 'references/**'
+      - .gitignore
+      - .github/workflows/validate.yml
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run contract drift guard
+        run: ./scripts/validate-contracts.sh

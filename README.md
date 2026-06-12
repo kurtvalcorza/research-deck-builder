@@ -1,9 +1,18 @@
 # Research Deck Builder
 
 Turn a written research/training module (`.md` with references) into a polished,
-presenter-ready PowerPoint deck — outline, faithful citations, a spoken speaker script,
-and a clean dark + blue visual design that renders correctly anywhere. Also repairs
-existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
+presenter-ready PowerPoint deck — outline, source-checked citations, a spoken speaker
+script, and a clean dark + blue visual design with no icon-font dependencies (icons are
+vector shapes; text fonts substitute gracefully where Segoe UI isn't installed). Also
+repairs existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
+
+## Install as a Claude Code skill
+
+Copy or clone this folder to `~/.claude/skills/research-deck-builder/` (personal) or
+`<project>/.claude/skills/research-deck-builder/` (project) — the folder name must
+match the `name` in `SKILL.md`'s frontmatter. `SKILL.md` is the method the agent
+follows; this README is the human quick start. Work in a separate deck workspace: run
+`npm install` there and keep decks and `mNN_*.json` artifacts out of the skill folder.
 
 ---
 
@@ -59,8 +68,9 @@ python3 scripts/map_references.py --source "01. Module Title.md" --out m01_refma
 # Phase 2 — build (copy build_deck_template.js → build_m01.js, fill slides from the outline)
 node build_m01.js m01_script.json "01 Short_Name_REDESIGN.pptx"
 
-# Phase 3 — QA (structural + fidelity gate, then visual render)
-python3 scripts/verify_deck.py --deck "01 Short_Name_REDESIGN.pptx" --source "01. Module Title.md" --expect 15
+# Phase 3 — QA (outline enforcement + structural + fidelity gate, then visual render)
+python3 scripts/verify_deck.py --deck "01 Short_Name_REDESIGN.pptx" \
+    --outline m01_outline.json --source "01. Module Title.md"   # add --refmap m01_refmap.json for [n] cites
 ./scripts/render_and_check.sh "01 Short_Name_REDESIGN.pptx" /path/to/viewable/_review
 ```
 
@@ -90,7 +100,8 @@ total). The source modules and finished decks are **not** included in this repo,
 content blocks, citations) as a worked example you can follow end to end. Module 01's
 trace through the pipeline:
 `01. Advanced Prompt Engineering for Research Tasks.md` → outline → script → build →
-finished deck.
+finished deck. Part B is the only pipeline artifact reproduced (and thus verifiable)
+in this repo.
 
 ## Golden rules (full list in SKILL.md)
 
