@@ -1,7 +1,7 @@
 # Research Deck Builder — Remediation Plan
 
-**Status:** APPROVED — owner decisions recorded 2026-06-12 (see "Decisions"); implementation in progress on this branch.
-**Date:** 2026-06-12 (pre-implementation review and approval: same day)
+**Status:** IMPLEMENTED — owner decisions recorded 2026-06-12 (see "Decisions"); all workstreams landed the same day. `scripts/validate-contracts.sh` exits 0; CI (G2) enforces it on PRs.
+**Date:** 2026-06-12 (audit, review, approval, and implementation)
 **Scope:** Fixes identified by the same four-layer audit applied to `research-writer`: (1) Claude Code platform alignment — here, *skill* packaging rather than subagent architecture; (2) instruction/script executability; (3) cross-file artifact-contract consistency; (4) overclaims in docs — plus repo hygiene and drift prevention. Reference patterns: `research-writer/REMEDIATION-PLAN.md` and `research-writer/scripts/validate-contracts.sh`.
 
 ---
@@ -121,7 +121,7 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 | # | Fix | Files |
 |---|-----|-------|
 | G1 | **`scripts/validate-contracts.sh`** — shipped with this audit (bash + python3 stdlib, no deps). Checks: SKILL.md frontmatter sanity (name↔folder, description ≤1024); doc↔script wiring (every script/template referenced, every referenced file exists); documented `--flag` drift against argparse; JSON template validity; backup-phase parity; word-band parity *and arithmetic*; archetype-sample parity (docs vs sample IIFEs); icon-font ban in the JS; asset existence for `BG_IMAGE`; `"The takeaway:"` marker parity; **two functional checks** (author-date refmap parsing, CITATION-regex acronym rejection); stale-vocab and overclaim guards; `.gitignore` presence. Exit 1 on any violation. | `scripts/validate-contracts.sh` |
-| G2 | **Optional CI:** GitHub Actions workflow running G1 on PRs touching `SKILL.md`, `README.md`, `SLIDE_BLUEPRINTS.md`, `scripts/`, `references/`. *Pending owner decision.* | `.github/workflows/validate.yml` |
+| G2 | **CI:** GitHub Actions workflow running G1 on PRs touching `SKILL.md`, `README.md`, `SLIDE_BLUEPRINTS.md`, `scripts/`, `references/`. *Approved (Decision 5) and shipped.* | `.github/workflows/validate.yml` |
 
 ---
 
@@ -139,6 +139,8 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 | Overclaim guard: "usually preinstalled" | A4 |
 
 All other checks pass today. **Overall acceptance for this plan: the validator exits 0.**
+
+**Implementation status (2026-06-12):** all six expected failures cleared — the validator exits 0. Functional verification during implementation: a synthetic deck passed the full gate (`--outline` + `--source` + `--refmap`); injected outline drift (renamed title, phantom citation) produced HARD failures; numbered-cites-without-refmap produced the soft reminder; `apply_background.py` verified working on python-pptx 1.0.2.
 
 ---
 
