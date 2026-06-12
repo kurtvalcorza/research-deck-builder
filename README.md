@@ -14,6 +14,7 @@ research-deck-builder/
 ├── SKILL.md                      # full method + design system + golden rules (read this)
 ├── README.md                     # this file — quick start
 ├── SLIDE_BLUEPRINTS.md           # layout archetypes (A1–A11) + worked-example slide map
+├── REMEDIATION-PLAN.md           # audit findings + staged fix plan (repo tooling)
 ├── assets/
 │   └── background.jpeg           # full-bleed royal-blue background (16:9)
 ├── references/                   # JSON templates for the pipeline artifacts
@@ -29,7 +30,8 @@ research-deck-builder/
     ├── embed_notes.py            # embed/topup/report/export speaker script in Notes
     ├── apply_background.py       # re-skin backgrounds (dry-run default, auto-backup)
     ├── render_and_check.sh       # render to images for visual QA
-    └── verify_deck.py            # QA gate: structure + fidelity vs source (--source)
+    ├── verify_deck.py            # QA gate: structure + fidelity vs source (--source)
+    └── validate-contracts.sh     # repo tooling: docs↔scripts drift guard (not part of the pipeline)
 ```
 
 ## One-time setup
@@ -101,3 +103,11 @@ finished deck.
   surname in the source **prose** and flag the mismatch.
 - Icons must be **vector shapes**, never an icon font.
 - Use a **fresh** render dir each time (LibreOffice locks them) — the render script does this.
+
+## Repo tooling
+
+`scripts/validate-contracts.sh` is a drift guard for this repo, not part of the deck
+pipeline: it checks that the docs and scripts stay consistent (documented flags, backup
+names, the notes word band, archetype claims) plus two functional checks on the QA
+tooling itself. It exits non-zero while the audit findings tracked in
+`REMEDIATION-PLAN.md` remain open, and goes green as those fixes land.
