@@ -1,0 +1,60 @@
+{
+  "_comment": "Phase 0 artifact: the authoritative content plan for one deck. Author this BEFORE building. Each slide entry: n (1-based), archetype (A1-A11, see SLIDE_BLUEPRINTS.md), title, blocks (free-form per archetype -- mirror the archetype's structure), citations (exact strings that must appear on the slide), source_anchor (heading or unique phrase in the source .md that this slide's content comes from, for traceability), notes_brief (1-2 lines the speaker script should cover). Rules: open with A1, close with A11, never two adjacent slides with the same archetype, aim for one A3 stat and one A5 matrix per module where content supports it. Every stat must be copied VERBATIM from the source and carry a citation. No double-quotes inside string values.",
+  "module": "NN",
+  "source": "NN. Module Title.md",
+  "deck_title": "Short_Name",
+  "citation_style": "author-date",
+  "slides": [
+    {
+      "n": 1,
+      "archetype": "A1",
+      "title": "Advanced Prompt Engineering for Research Tasks",
+      "blocks": {
+        "eyebrow": "MODULE 01",
+        "subtitle": "A methodological playbook for rigorous AI-assisted research."
+      },
+      "citations": [],
+      "source_anchor": "document title",
+      "notes_brief": "Why this module matters to a working researcher; 30-60 words."
+    },
+    {
+      "n": 2,
+      "archetype": "A2",
+      "title": "From Search Engine to Experimental Protocol",
+      "blocks": {
+        "left": {
+          "eyebrow": "ZERO-SHOT RISK",
+          "heading": "The naive prompt",
+          "body": "Unstructured prompting yields misaligned, generic, and inauthentic content."
+        },
+        "right": {
+          "eyebrow": "STRUCTURAL PROMPTING",
+          "items": ["Contextual Rules", "AI Reasoning", "Source Database", "Human Logic"]
+        },
+        "band": "The Paradigm Shift: treat the prompt as an experimental protocol, not a query."
+      },
+      "citations": ["(Sun et al., 2025)", "(Kulkarni, 2024)"],
+      "source_anchor": "## The Paradigm Shift",
+      "notes_brief": "Contrast naive search-style prompting with protocol-style prompting."
+    },
+    {
+      "n": 3,
+      "archetype": "A3",
+      "title": "The Mathematical Impact of Prompt Architecture",
+      "blocks": {
+        "stat_from": "85%",
+        "stat_to": "98%",
+        "label_from": "Generic prompt",
+        "label_to": "Structured prompt",
+        "caption": "What the jump means in practice.",
+        "cards": [
+          {"tone": "AMBER", "head": "The Risk", "body": "Cost of poor design."},
+          {"tone": "ACCENT", "head": "The Bottom Line", "body": "Structure pays for itself."}
+        ]
+      },
+      "citations": ["(Kulkarni, 2024)", "(Kawakita et al., 2025)"],
+      "source_anchor": "accuracy improved from 85% to 98%",
+      "notes_brief": "Lead with the number; explain what drove the delta."
+    }
+  ]
+}

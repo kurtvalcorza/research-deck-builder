@@ -1,0 +1,30 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- Node ---
+node_modules/
+
+# --- Generated deck artifacts (built from the templates, not part of the tool) ---
+*.pptx
+build_m*.js
+m*_outline.json
+m*_script.json
+m*_refmap.json
+topups.json
+citations.json
+
+# --- Visual QA render output ---
+rv_*/
+_review/
+*.pdf
+
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

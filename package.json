@@ -1,0 +1,19 @@
+{
+  "name": "research-deck-builder",
+  "version": "1.0.0",
+  "description": "Turn a cited research/training module (Markdown) into a polished, presenter-ready PowerPoint deck — outline, faithful citations, speaker script, and a consistent dark + blue visual system.",
+  "license": "MIT",
+  "author": "Kurt Valcorza",
+  "keywords": [
+    "powerpoint",
+    "pptx",
+    "pptxgenjs",
+    "slides",
+    "presentation",
+    "research",
+    "citations"
+  ],
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}
