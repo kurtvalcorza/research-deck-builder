@@ -5,12 +5,6 @@ presenter-ready PowerPoint deck — outline, faithful citations, a spoken speake
 and a clean dark + blue visual design that renders correctly anywhere. Also repairs
 existing decks (reinstate dropped citations, embed notes, re-skin backgrounds).
 
-This folder is a **self-contained skill**: `SKILL.md` is the full method and spec
-(agent instructions); this README is the human quick start.
-
-> **When to use what:** decks built from a *cited source document* → this skill.
-> Event, policy, keynote, or general decks → `presentation-studio`.
-
 ---
 
 ## Folder contents
