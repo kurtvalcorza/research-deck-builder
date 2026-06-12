@@ -95,7 +95,7 @@ done
 # 7. Archetype-sample parity
 # 11./12. Functional checks
 # ---------------------------------------------------------------------------
-pyout=$(python3 - <<'PY'
+pyout=$(python3 - 2>&1 <<'PY'
 import ast, json, re, subprocess, sys, tempfile, os
 
 errors = []
@@ -196,7 +196,12 @@ for e in errors:
     print(e)
 PY
 )
-if [ -n "$pyout" ]; then
+pystatus=$?
+if [ "$pystatus" -ne 0 ]; then
+  # a crash here means checks 6/7/11/12 did NOT run — never report success
+  err "embedded python checks crashed (exit $pystatus); checks 6/7/11/12 did not run:"
+  [ -n "$pyout" ] && printf '%s\n' "$pyout" | sed 's/^/       /'
+elif [ -n "$pyout" ]; then
   while IFS= read -r line; do err "$line"; done <<< "$pyout"
 fi
 
