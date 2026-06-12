@@ -228,6 +228,14 @@ def verify(args):
     if outline is not None:
         def norm(t):
             return re.sub(r"\s+", " ", t).strip().casefold()
+        # The numbering must be exactly 1..N: a hand-edited outline with a duplicate
+        # n and a gap still has the right COUNT, but the gapped slide would silently
+        # escape the title/citation checks below.
+        declared = [osl.get("n") for osl in outline["slides"]]
+        if sorted((d for d in declared if isinstance(d, int)), key=int) != \
+                list(range(1, len(declared) + 1)):
+            hard.append(f"outline slide numbers must be exactly 1..{len(declared)} "
+                        f"with no gaps or duplicates (got {declared})")
         for osl in outline["slides"]:
             k = osl.get("n")
             if not isinstance(k, int) or not 1 <= k <= n:
