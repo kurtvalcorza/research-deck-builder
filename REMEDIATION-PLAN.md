@@ -99,7 +99,7 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 | # | Fix | Files |
 |---|-----|-------|
 | E1 | **"renders correctly anywhere"** → true for icons (vector shapes), not for text: Segoe UI / Consolas substitute on machines without them. Reword to claim exactly the icon guarantee plus graceful font substitution. | `README.md` |
-| E2 | **NAIRA provenance framing.** The "proven on 7 modules / 94 slides" claim is honestly disclosed as not shipped — keep it, but label Part B of `SLIDE_BLUEPRINTS.md` as the only artifact verifiable from this repo. One-line wording change. | `README.md`, `SLIDE_BLUEPRINTS.md` |
+| E2 | **Provenance framing.** The "proven on 7 modules / 94 slides" claim is honestly disclosed as not shipped — keep it, but label Part B of `SLIDE_BLUEPRINTS.md` as the only artifact verifiable from this repo. One-line wording change. | `README.md`, `SLIDE_BLUEPRINTS.md` |
 | E3 | **python-pptx version risk.** `apply_background.py` uses `slide.part.get_or_add_image_part` — not a public python-pptx API. Test against current python-pptx (1.x) and pin a verified range (e.g. `python-pptx>=0.6.21,<2`) with a note. | `requirements.txt`, `scripts/apply_background.py` |
 
 **Acceptance:** validator overclaim guards pass; pinned range documented as tested.
