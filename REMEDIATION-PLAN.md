@@ -1,7 +1,7 @@
 # Research Deck Builder — Remediation Plan
 
-**Status:** PROPOSED — audit completed 2026-06-12; plan re-verified pre-implementation against `main` (post PR #1/#2 merges and the owner's simplification/anonymization commits); owner decisions pending (see "Decisions Required"). F1 is complete; A2 is half-complete.
-**Date:** 2026-06-12 (pre-implementation review: same day)
+**Status:** APPROVED — owner decisions recorded 2026-06-12 (see "Decisions"); implementation in progress on this branch.
+**Date:** 2026-06-12 (pre-implementation review and approval: same day)
 **Scope:** Fixes identified by the same four-layer audit applied to `research-writer`: (1) Claude Code platform alignment — here, *skill* packaging rather than subagent architecture; (2) instruction/script executability; (3) cross-file artifact-contract consistency; (4) overclaims in docs — plus repo hygiene and drift prevention. Reference patterns: `research-writer/REMEDIATION-PLAN.md` and `research-writer/scripts/validate-contracts.sh`.
 
 ---
@@ -54,7 +54,7 @@ Every behavioral finding below was reproduced during the audit:
 | # | Fix | Files |
 |---|-----|-------|
 | B1 | **Fail-soft on missing background image.** `build_deck_template.js`: `fs.existsSync(BG_IMAGE)` check at startup — warn loudly and fall back to the solid `BG` color instead of letting pptxgenjs throw at `writeFile` after all slides are built. | `scripts/build_deck_template.js` |
-| B2 | **Implement (or stop claiming) author-date bibliography parsing.** `map_references.py` parses only numbered entries (`[1]` / `1.`); an APA-style list yields 0 entries and silently disables the scrambled-bib check — the exact failure the script exists to catch. *Recommended:* parse APA-style lines (`Surname, I., & Surname, I. (YYYY). Title…`) into entries keyed by surname-year. *Fallback:* re-scope the docstring and emit an explicit warning: "author-date reference list detected but not parsed; scrambled-bib check skipped." | `scripts/map_references.py` |
+| B2 | **Implement (or stop claiming) author-date bibliography parsing.** `map_references.py` parses only numbered entries (`[1]` / `1.`); an APA-style list yields 0 entries and silently disables the scrambled-bib check — the exact failure the script exists to catch. **Resolved (Decision 3): IEEE/numbered-only** — re-scope the docstring and emit an explicit warning: "author-date reference list detected but not parsed; scrambled-bib check skipped." Validator check 11 changes contract: 0 entries is acceptable only with the loud warning. | `scripts/map_references.py`, `scripts/validate-contracts.sh` |
 | B3 | **Bare-name cite collection.** The in-text-forms comment lists `(Nash)` but the `AUTHOR_DATE` regex requires a year, so bare-name cites are never collected. Collect them with a second pattern (and include them in the scrambled-bib cross-check) or correct the comment. | `scripts/map_references.py` |
 | B4 | **Run-less paragraph bug in reinstate_citations.** A uniquely matched paragraph with zero runs prints `OK S{n} -> cite` and is counted as applied while nothing is written. Classify as a problem ("matched paragraph has no runs — cannot append") so the apply pass refuses to save. | `scripts/reinstate_citations.py` |
 | B5 | **Stale phase vocabulary.** `extract_deck_text.py`'s docstring references "Phase 1 (citations)" and "Phase 2/3 (notes/redesign)" — a numbering that no longer exists (current: Phase 0 intake, 1 script, 2 build, 3 QA; REPAIR steps 1–5). Rewrite against the current scheme. | `scripts/extract_deck_text.py` |
@@ -87,7 +87,7 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 | # | Fix | Files |
 |---|-----|-------|
 | D1 | **Tighten the CITATION regex.** `(REFINE)`, `(AI)`, `(PARTS)` currently count as citations (verified). Require a year OR a lowercase letter in the name token — keeps `(Nash)` and `(McDonald)`, drops ALL-CAPS acronyms. The validator's functional check is the acceptance test. **Coupling note:** validator check 12 hardcodes the bare-name policy (`(Nash)` must match; acronyms must not) — if Decisions 2/3 change what counts as a citation, `verify_deck.py` and `validate-contracts.sh` must change in the same commit. | `scripts/verify_deck.py`, `scripts/validate-contracts.sh` (if policy changes) |
-| D2 | **Fix the word-band arithmetic everywhere, consistently.** Pick one anchor — *recommended:* keep the 180–210-word band and restate timing as "≈ 80–90 seconds at ~138 wpm" (alternative: keep 90–120 s and re-band to ~200–270 words). Then make `SKILL.md` Phase 1, the `embed_notes.py` docstring, and `script_template.json` `_house_style` agree; `report`'s `~seconds` readout already computes words/2.3 and will then match the prose. | `SKILL.md`, `scripts/embed_notes.py`, `references/script_template.json` |
+| D2 | **Fix the word-band arithmetic everywhere, consistently.** **Resolved (Decision 4): keep the 90–120 s anchor** — the band becomes **200–270 words** (200/2.3 ≈ 87 s, 270/2.3 ≈ 117 s; both within the validator's 10% tolerance of the claimed 90–120 s). Change together: `MIN_W`/`MAX_W` in `embed_notes.py` + its docstring, `verify_deck.py` `--min-words`/`--max-words` defaults, `SKILL.md` Phase 1, and `script_template.json` `_house_style` + sample text. | `SKILL.md`, `scripts/embed_notes.py`, `scripts/verify_deck.py`, `references/script_template.json` |
 | D3 | **Re-scope the gate's claims to what it does.** "a programmatic QA gate that verifies citations and stats against the source" (frontmatter) and "faithful citations" (README) overpromise: the implementation checks that cited surnames and stat-like numbers *appear somewhere in the source*, as SOFT warnings by default. It cannot detect a right-surname-wrong-claim attribution, and by default fidelity misses don't fail the build. Reword ("checks every cited surname and on-slide stat appears in the source; `--strict` makes misses fatal") and recommend `--strict` for final delivery in Phase 3. | `SKILL.md` frontmatter + Phase 3, `README.md` |
 
 **Acceptance:** validator word-band-arithmetic and acronym-guard checks pass; frontmatter description matches `verify_deck.py`'s actual checks.
@@ -156,11 +156,11 @@ Noted during the pre-implementation review; loud or low-impact enough to leave o
 - The B6 recolor `sed … /Ig` case-insensitive flag is GNU-sed-only; macOS/BSD sed lacks `I` (the skill's documented platforms — Windows/WSL, Linux sandboxes — all have GNU sed).
 - `verify_deck.py`'s icon-ligature heuristic exempts a whole slide if *any* run on it uses Consolas, so a code slide can mask a broken icon ligature elsewhere on the same slide.
 
-## Decisions Required
+## Decisions (resolved 2026-06-12)
 
-1. **C1 — outline enforcement:** add `--outline` checks to `verify_deck.py` (*recommended*), or downgrade the source-of-truth claim?
-2. **C2 — citation grammar:** add numbered-cite (`[n]` + refmap) support to the QA gate (*recommended*), or restrict on-slide citations to author-date and document the restriction?
-3. **B2 — author-date bibliographies:** implement APA-style reference-list parsing in `map_references.py` (*recommended*), or re-scope the docstring + loud skip warning?
-4. **D2 — word-band anchor:** keep 180–210 words and restate timing as ≈80–90 s (*recommended*), or keep 90–120 s and widen the band to ~200–270 words (changes `MIN_W`/`MAX_W` and verify defaults)?
-5. **G2 — CI:** add the GitHub Actions check, or keep the validator local-only?
-6. **PR granularity:** 3 stacked PRs per the sequencing above (*recommended*), or a single PR?
+1. **C1 — outline enforcement:** YES — add `--outline` checks to `verify_deck.py` (slide count, per-slide titles, per-slide citation strings; HARD failures).
+2. **C2 — citation grammar:** YES — add numbered-cite (`[n]`) support to the QA gate, with `--refmap mNN_refmap.json` resolving entries for fidelity checks.
+3. **B2 — bibliographies:** IEEE/numbered-only. Do NOT implement APA parsing; re-scope the docstring and emit a loud "author-date list not parsed; scrambled-bib check skipped" warning instead. (Owner: sources use IEEE-style numbered references.)
+4. **D2 — word band:** keep the **90–120 s** anchor; the word band changes to **200–270 words** (≈90–117 s at ~2.3 w/s) — `MIN_W`/`MAX_W`, `verify_deck` defaults, SKILL.md, and the script template all change together.
+5. **G2 — CI:** YES — add the GitHub Actions check.
+6. **PR granularity:** sequenced commits (one per workstream group) on the single session branch — true stacked PRs aren't available in this environment; the recommendation is adapted accordingly.
