@@ -1,7 +1,7 @@
 # Research Deck Builder — Remediation Plan
 
-**Status:** PROPOSED — audit completed 2026-06-12; owner decisions pending (see "Decisions Required").
-**Date:** 2026-06-12
+**Status:** PROPOSED — audit completed 2026-06-12; plan re-verified pre-implementation against `main` (post PR #1/#2 merges and the owner's simplification/anonymization commits); owner decisions pending (see "Decisions Required"). F1 is complete; A2 is half-complete.
+**Date:** 2026-06-12 (pre-implementation review: same day)
 **Scope:** Fixes identified by the same four-layer audit applied to `research-writer`: (1) Claude Code platform alignment — here, *skill* packaging rather than subagent architecture; (2) instruction/script executability; (3) cross-file artifact-contract consistency; (4) overclaims in docs — plus repo hygiene and drift prevention. Reference patterns: `research-writer/REMEDIATION-PLAN.md` and `research-writer/scripts/validate-contracts.sh`.
 
 ---
@@ -40,12 +40,12 @@ Every behavioral finding below was reproduced during the audit:
 
 | # | Fix | Files |
 |---|-----|-------|
-| A1 | **Add an install section.** README never says where the folder must live for Claude Code to discover it. Document: copy/clone to `~/.claude/skills/research-deck-builder/` (personal) or `<project>/.claude/skills/research-deck-builder/` (project); the directory name must match the frontmatter `name`; plugins are the distribution alternative. | `README.md`, one line in `SKILL.md` |
-| A2 | **Defuse the `presentation-studio` dangling reference.** The frontmatter boundary and README point to a skill not shipped here and possibly not installed. Reword so it degrades gracefully: "…out of scope for this skill; use a general-purpose presentation skill (e.g. presentation-studio, if available)." | `SKILL.md` frontmatter, `README.md` |
+| A1 | **Add an install section.** README never says where the folder must live for Claude Code to discover it. Document: copy/clone to `~/.claude/skills/research-deck-builder/` (personal) or `<project>/.claude/skills/research-deck-builder/` (project); the directory name must match the frontmatter `name`; plugins are the distribution alternative. *Keep it to a few lines — the owner deliberately simplified the README (commit d71f152), and that commit also removed the only sentence identifying this folder as a skill, so the install section now carries that framing too.* | `README.md`, one line in `SKILL.md` |
+| A2 | **Defuse the `presentation-studio` dangling reference.** ~~README~~ *(done — the owner removed the README boundary note in d71f152)*. Remaining: the SKILL.md frontmatter boundary still points to a skill not shipped here and possibly not installed. Reword so it degrades gracefully: "…out of scope for this skill; use a general-purpose presentation skill (e.g. presentation-studio, if available)." | `SKILL.md` frontmatter only |
 | A3 | **State the working-directory contract once.** Commands are written `python3 scripts/...` and `BG_IMAGE = 'assets/background.jpeg'` as if CWD were the skill root, but decks and artifacts live in the *user's* workspace (npm install is even documented as "in the dir where you'll build decks"). Add: scripts are invoked by path into the skill folder; Phase 2 gains an explicit step "copy `assets/background.jpeg` next to `build_mNN.js` (or set `BG_IMAGE` to an absolute path, or `''` for solid background)". Today a fresh build in a workspace dir crashes at write time on the missing image (the JS comment admits this; the Phase 2 step list omits the copy). | `SKILL.md` (Environment + Phase 2), `README.md` |
 | A4 | **Honest environment preflight.** Replace "soffice/poppler are usually preinstalled" with a check command (`command -v soffice pdftoppm`) plus the existing degradation path (run `verify_deck.py` only). Evidence: this audit's sandbox lacked `pdftoppm`. | `SKILL.md` |
 
-**Acceptance:** README has an install path; `grep -F "usually preinstalled" SKILL.md` is empty; Phase 2 step list includes the asset step; validator overclaim guard passes.
+**Acceptance:** README has an install path; the validator's overclaim guard passes. *(Do NOT use a plain `grep -F "usually preinstalled" SKILL.md` as the acceptance test — the phrase is line-wrapped in the file, so that grep returns empty today and would false-pass; the validator whitespace-normalizes before matching.)* Phase 2 step list includes the asset step.
 
 ---
 
@@ -86,7 +86,7 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 
 | # | Fix | Files |
 |---|-----|-------|
-| D1 | **Tighten the CITATION regex.** `(REFINE)`, `(AI)`, `(PARTS)` currently count as citations (verified). Require a year OR a lowercase letter in the name token — keeps `(Nash)` and `(McDonald)`, drops ALL-CAPS acronyms. The validator's functional check is the acceptance test. | `scripts/verify_deck.py` |
+| D1 | **Tighten the CITATION regex.** `(REFINE)`, `(AI)`, `(PARTS)` currently count as citations (verified). Require a year OR a lowercase letter in the name token — keeps `(Nash)` and `(McDonald)`, drops ALL-CAPS acronyms. The validator's functional check is the acceptance test. **Coupling note:** validator check 12 hardcodes the bare-name policy (`(Nash)` must match; acronyms must not) — if Decisions 2/3 change what counts as a citation, `verify_deck.py` and `validate-contracts.sh` must change in the same commit. | `scripts/verify_deck.py`, `scripts/validate-contracts.sh` (if policy changes) |
 | D2 | **Fix the word-band arithmetic everywhere, consistently.** Pick one anchor — *recommended:* keep the 180–210-word band and restate timing as "≈ 80–90 seconds at ~138 wpm" (alternative: keep 90–120 s and re-band to ~200–270 words). Then make `SKILL.md` Phase 1, the `embed_notes.py` docstring, and `script_template.json` `_house_style` agree; `report`'s `~seconds` readout already computes words/2.3 and will then match the prose. | `SKILL.md`, `scripts/embed_notes.py`, `references/script_template.json` |
 | D3 | **Re-scope the gate's claims to what it does.** "a programmatic QA gate that verifies citations and stats against the source" (frontmatter) and "faithful citations" (README) overpromise: the implementation checks that cited surnames and stat-like numbers *appear somewhere in the source*, as SOFT warnings by default. It cannot detect a right-surname-wrong-claim attribution, and by default fidelity misses don't fail the build. Reword ("checks every cited surname and on-slide stat appears in the source; `--strict` makes misses fatal") and recommend `--strict` for final delivery in Phase 3. | `SKILL.md` frontmatter + Phase 3, `README.md` |
 
@@ -99,7 +99,7 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 | # | Fix | Files |
 |---|-----|-------|
 | E1 | **"renders correctly anywhere"** → true for icons (vector shapes), not for text: Segoe UI / Consolas substitute on machines without them. Reword to claim exactly the icon guarantee plus graceful font substitution. | `README.md` |
-| E2 | **Provenance framing.** The "proven on 7 modules / 94 slides" claim is honestly disclosed as not shipped — keep it, but label Part B of `SLIDE_BLUEPRINTS.md` as the only artifact verifiable from this repo. One-line wording change. | `README.md`, `SLIDE_BLUEPRINTS.md` |
+| E2 | **Provenance framing.** The claim (now worded "proven on a seven-module research-training series (94 slides)" after the owner's anonymization) is honestly disclosed as not shipped — keep it, but label Part B of `SLIDE_BLUEPRINTS.md` as the only artifact verifiable from this repo. One-line wording change. | `README.md`, `SLIDE_BLUEPRINTS.md` |
 | E3 | **python-pptx version risk.** `apply_background.py` uses `slide.part.get_or_add_image_part` — not a public python-pptx API. Test against current python-pptx (1.x) and pin a verified range (e.g. `python-pptx>=0.6.21,<2`) with a note. | `requirements.txt`, `scripts/apply_background.py` |
 
 **Acceptance:** validator overclaim guards pass; pinned range documented as tested.
@@ -110,7 +110,7 @@ The pipeline's artifacts: `mNN_refmap.json` → `mNN_outline.json` → `mNN_scri
 
 | # | Fix | Files |
 |---|-----|-------|
-| F1 | **List `scripts/validate-contracts.sh` and `REMEDIATION-PLAN.md`** in the README folder tree (labelled repo tooling, not pipeline tooling — the validator exempts itself from the pipeline-wiring check for this reason). | `README.md` |
+| F1 | ✅ **DONE (PR #2, merged).** `scripts/validate-contracts.sh` and `REMEDIATION-PLAN.md` are listed in the README folder tree, with a "Repo tooling" section explaining the validator's intentional non-zero exit. | `README.md` |
 
 *(An earlier draft flagged a missing `.gitignore`; on inspection one exists and is thorough — recorded under clean checks instead. The validator keeps it as a regression guard.)*
 
@@ -144,9 +144,17 @@ All other checks pass today. **Overall acceptance for this plan: the validator e
 
 ## Sequencing & PR strategy
 
-Order: **B + D** (script behavior and gate honesty first — code must match its own claims before docs are rewritten) → **C** (contracts; C1/C2 build on the B2/D1 decisions) → **A + E** (docs rewritten once, against the final behavior) → **F** (hygiene) → **G2** (CI last; G1 ships with this audit and goes green as the workstreams land).
+Order: **B + D** (script behavior and gate honesty first — code must match its own claims before docs are rewritten) → **C** (contracts; C1/C2 build on the B2/D1 decisions) → **A + E** (docs rewritten once, against the final behavior) → **G2** (CI last; G1 shipped with the audit and goes green as the workstreams land). *(F is already complete — PR #2.)*
 
-Proposed delivery: either one PR per workstream group (3 stacked: ① B+D code fixes, ② C contracts, ③ A/E/F docs+hygiene+CI) or a single PR — owner's call (Decision 5).
+Proposed delivery: either one PR per workstream group (3 stacked: ① B+D code fixes, ② C contracts, ③ A/E docs + G2 CI if approved) or a single PR — owner's call (Decision 6).
+
+## Deferred nits (recorded, not scheduled)
+
+Noted during the pre-implementation review; loud or low-impact enough to leave out of scope unless they bite:
+
+- `embed_notes.py check_keys` crashes with a raw `ValueError` on a non-integer, non-underscore key in the script/topups JSON (fails loudly, just ugly).
+- The B6 recolor `sed … /Ig` case-insensitive flag is GNU-sed-only; macOS/BSD sed lacks `I` (the skill's documented platforms — Windows/WSL, Linux sandboxes — all have GNU sed).
+- `verify_deck.py`'s icon-ligature heuristic exempts a whole slide if *any* run on it uses Consolas, so a code slide can mask a broken icon ligature elsewhere on the same slide.
 
 ## Decisions Required
 
@@ -155,3 +163,4 @@ Proposed delivery: either one PR per workstream group (3 stacked: ① B+D code f
 3. **B2 — author-date bibliographies:** implement APA-style reference-list parsing in `map_references.py` (*recommended*), or re-scope the docstring + loud skip warning?
 4. **D2 — word-band anchor:** keep 180–210 words and restate timing as ≈80–90 s (*recommended*), or keep 90–120 s and widen the band to ~200–270 words (changes `MIN_W`/`MAX_W` and verify defaults)?
 5. **G2 — CI:** add the GitHub Actions check, or keep the validator local-only?
+6. **PR granularity:** 3 stacked PRs per the sequencing above (*recommended*), or a single PR?
