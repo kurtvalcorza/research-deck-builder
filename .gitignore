@@ -8,6 +8,14 @@ venv/
 # --- Node ---
 node_modules/
 
+# --- Per-deck workspace directories ---
+# Whole working dirs for individual decks. These hold source modules, outlines and
+# scripts with real client/work content and must never reach this public repo.
+# Excluded as DIRECTORIES: the file patterns below only cover them incidentally
+# (a workspace dir whose files all happen to match is invisible to git by luck,
+# not by intent) — and luck stops working the moment someone adds a .txt or .md.
+_*_deck/
+
 # --- Generated deck artifacts (built from the templates, not part of the tool) ---
 *.pptx
 build_m*.js
